@@ -53,6 +53,37 @@ func TestRuntimeStats_EmitsRecord(t *testing.T) {
 	}
 }
 
+func TestRuntimeStatsWithFields_MergesExtraAndProtectsReservedKeys(t *testing.T) {
+	fs := newFakeSocket(t)
+	c, err := New(WithSocket(fs.path), WithHeartbeatSocket(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	c.RuntimeStatsWithFields(ctx, "test-svc", 50*time.Millisecond, map[string]any{
+		"coordinator_id": "i-abc123",
+		"type":           "should-not-win", // reserved key must not be clobbered
+	})
+
+	fs.waitForN(t, 1)
+
+	frame := fs.snapshot()[0]
+	prefix := "test-svc/runtime:"
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimPrefix(frame, prefix)), &payload); err != nil {
+		t.Fatalf("payload not JSON: %v (raw %q)", err, frame)
+	}
+	if payload["coordinator_id"] != "i-abc123" {
+		t.Errorf("coordinator_id = %v, want i-abc123", payload["coordinator_id"])
+	}
+	if payload["type"] != "go_runtime" {
+		t.Errorf("reserved key clobbered: type = %v, want go_runtime", payload["type"])
+	}
+}
+
 func TestRuntimeStats_TickerCadence(t *testing.T) {
 	fs := newFakeSocket(t)
 	c, err := New(WithSocket(fs.path), WithHeartbeatSocket(""))

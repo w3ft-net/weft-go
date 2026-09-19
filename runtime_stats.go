@@ -24,13 +24,21 @@ const DefaultRuntimeStatsInterval = 30 * time.Second
 // The method returns immediately; callers don't manage the
 // goroutine lifecycle directly — cancel ctx to stop.
 func (c *Client) RuntimeStats(ctx context.Context, service string, interval time.Duration) {
+	c.RuntimeStatsWithFields(ctx, service, interval, nil)
+}
+
+// RuntimeStatsWithFields behaves like RuntimeStats but merges extra
+// into every emitted record — e.g. an instance identifier so multiple
+// processes running the same service are distinguishable downstream.
+// Reserved keys (see emitRuntimeStats) always win over extra.
+func (c *Client) RuntimeStatsWithFields(ctx context.Context, service string, interval time.Duration, extra map[string]any) {
 	if interval <= 0 {
 		interval = DefaultRuntimeStatsInterval
 	}
-	go c.runRuntimeStats(ctx, service, interval)
+	go c.runRuntimeStats(ctx, service, interval, extra)
 }
 
-func (c *Client) runRuntimeStats(ctx context.Context, service string, interval time.Duration) {
+func (c *Client) runRuntimeStats(ctx context.Context, service string, interval time.Duration, extra map[string]any) {
 	app := service + "/runtime"
 	startedAt := time.Now()
 	t := time.NewTicker(interval)
@@ -38,19 +46,19 @@ func (c *Client) runRuntimeStats(ctx context.Context, service string, interval t
 
 	// Emit one immediately so dashboards have a value before the
 	// first interval elapses.
-	c.emitRuntimeStats(app, service, startedAt)
+	c.emitRuntimeStats(app, service, startedAt, extra)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			c.emitRuntimeStats(app, service, startedAt)
+			c.emitRuntimeStats(app, service, startedAt, extra)
 		}
 	}
 }
 
-func (c *Client) emitRuntimeStats(app, service string, startedAt time.Time) {
+func (c *Client) emitRuntimeStats(app, service string, startedAt time.Time, extra map[string]any) {
 	now := time.Now()
 
 	var ms runtime.MemStats
@@ -58,23 +66,25 @@ func (c *Client) emitRuntimeStats(app, service string, startedAt time.Time) {
 
 	pauseUs := pausePercentilesMicroseconds(&ms)
 
-	record := map[string]any{
-		"type":             "go_runtime",
-		"ts":               now.UTC().Format(time.RFC3339Nano),
-		"service":          service,
-		"uptime_s":         now.Sub(startedAt).Seconds(),
-		"goroutines":       runtime.NumGoroutine(),
-		"fds_open":         openFDs(),
-		"heap_alloc_mb":    bytesToMB(ms.HeapAlloc),
-		"heap_sys_mb":      bytesToMB(ms.HeapSys),
-		"heap_inuse_mb":    bytesToMB(ms.HeapInuse),
-		"stack_inuse_mb":   bytesToMB(ms.StackInuse),
-		"gc_pauses_p50_us": pauseUs.p50,
-		"gc_pauses_p95_us": pauseUs.p95,
-		"gc_pauses_p99_us": pauseUs.p99,
-		"gc_count":         ms.NumGC,
-		"next_gc_mb":       bytesToMB(ms.NextGC),
+	record := map[string]any{}
+	for k, v := range extra {
+		record[k] = v
 	}
+	record["type"] = "go_runtime"
+	record["ts"] = now.UTC().Format(time.RFC3339Nano)
+	record["service"] = service
+	record["uptime_s"] = now.Sub(startedAt).Seconds()
+	record["goroutines"] = runtime.NumGoroutine()
+	record["fds_open"] = openFDs()
+	record["heap_alloc_mb"] = bytesToMB(ms.HeapAlloc)
+	record["heap_sys_mb"] = bytesToMB(ms.HeapSys)
+	record["heap_inuse_mb"] = bytesToMB(ms.HeapInuse)
+	record["stack_inuse_mb"] = bytesToMB(ms.StackInuse)
+	record["gc_pauses_p50_us"] = pauseUs.p50
+	record["gc_pauses_p95_us"] = pauseUs.p95
+	record["gc_pauses_p99_us"] = pauseUs.p99
+	record["gc_count"] = ms.NumGC
+	record["next_gc_mb"] = bytesToMB(ms.NextGC)
 
 	// Best-effort: a transport hiccup shouldn't crash the host
 	// process. Errors are silently dropped here; the records

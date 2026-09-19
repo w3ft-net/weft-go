@@ -50,6 +50,32 @@ func TestHeartbeat_EmitsRecordsOnRecordsSocket(t *testing.T) {
 	}
 }
 
+func TestHeartbeatWithFields_MergesExtraAndProtectsReservedKeys(t *testing.T) {
+	fs := newFakeSocket(t)
+	c, err := New(WithSocket(fs.path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go c.HeartbeatWithFields(ctx, "looper", 30*time.Millisecond, map[string]any{
+		"coordinator_id": "i-abc123",
+		"service":        "should-not-win", // reserved key must not be clobbered
+	})
+
+	fs.waitForN(t, 1)
+	cancel()
+
+	got := fs.snapshot()[0]
+	if !strings.Contains(got, `"coordinator_id":"i-abc123"`) {
+		t.Errorf("frame missing extra field: %q", got)
+	}
+	if !strings.Contains(got, `"service":"looper"`) {
+		t.Errorf("reserved key was clobbered by extra: %q", got)
+	}
+}
+
 func TestHeartbeat_InvalidServiceReturnsWithoutEmitting(t *testing.T) {
 	fs := newFakeSocket(t)
 	c, err := New(WithSocket(fs.path))

@@ -107,6 +107,15 @@ const DefaultHeartbeatInterval = 30 * time.Second
 // socket and no token) the call logs once and returns — no log spam
 // from a misconfigured client.
 func (c *Client) Heartbeat(ctx context.Context, service string, interval time.Duration) {
+	c.HeartbeatWithFields(ctx, service, interval, nil)
+}
+
+// HeartbeatWithFields behaves like Heartbeat but merges extra into
+// every emitted record — e.g. an instance identifier so multiple
+// processes running the same service are distinguishable downstream.
+// The reserved keys (type, service, ts) always win over anything in
+// extra, protecting the liveness contract other tooling depends on.
+func (c *Client) HeartbeatWithFields(ctx context.Context, service string, interval time.Duration, extra map[string]any) {
 	if !validService(service) {
 		fmt.Fprintf(os.Stderr, "weft: heartbeat: invalid service name %q\n", service)
 		return
@@ -120,11 +129,13 @@ func (c *Client) Heartbeat(ctx context.Context, service string, interval time.Du
 	}
 	app := service + "/heartbeats"
 	beat := func() {
-		ev := heartbeatEvent{
-			Type:    "heartbeat",
-			Service: service,
-			TS:      time.Now().UTC().Format(time.RFC3339Nano),
+		ev := make(map[string]any, len(extra)+3)
+		for k, v := range extra {
+			ev[k] = v
 		}
+		ev["type"] = "heartbeat"
+		ev["service"] = service
+		ev["ts"] = time.Now().UTC().Format(time.RFC3339Nano)
 		if err := c.Send(app, ev); err != nil {
 			fmt.Fprintf(os.Stderr, "weft: heartbeat %q: %v\n", service, err)
 		}
