@@ -1,6 +1,7 @@
 package weft
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -12,6 +13,12 @@ import (
 // matching the wire format in weft's weftd.SocketListener:
 //
 //	<app>:<message>\n
+//
+// When the send's ctx carries an ambient trace ID, the message is
+// additionally wrapped in a \x1e-delimited envelope so weftd can
+// attach it structurally instead of relying on text extraction:
+//
+//	<app>:\x1e<trace_id>\x1e<message>\n
 //
 // Reconnect-on-error: the transport lazily opens the connection
 // and reopens it once on each write that fails, so a weftd
@@ -31,7 +38,7 @@ func newSocketTransport(path string) *socketTransport {
 	return &socketTransport{path: path}
 }
 
-func (t *socketTransport) sendLine(app, line string) error {
+func (t *socketTransport) sendLine(ctx context.Context, app, line string) error {
 	if strings.ContainsRune(line, '\n') {
 		// Newline-delimited framing relies on the line having no
 		// embedded newlines. Reject explicitly rather than
@@ -39,6 +46,14 @@ func (t *socketTransport) sendLine(app, line string) error {
 		return fmt.Errorf("weft: line contains newline")
 	}
 	frame := app + ":" + line + "\n"
+	if traceID, ok := TraceIDFromContext(ctx); ok {
+		if !validTraceIDForEnvelope(traceID) {
+			return fmt.Errorf("weft: trace id contains control byte, refusing to frame")
+		}
+		// \x1e-delimited envelope, matching weftd.SocketListener's
+		// structural trace-id extension: app:\x1eTRACE_ID\x1eline
+		frame = app + ":\x1e" + traceID + "\x1e" + line + "\n"
+	}
 
 	t.mu.Lock()
 	defer t.mu.Unlock()

@@ -1,6 +1,7 @@
 package weft
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -17,7 +18,7 @@ func TestNew_NoCredentialsYieldsNoopTransport(t *testing.T) {
 	}
 	defer c.Close()
 
-	err = c.Send("anyapp", map[string]any{"x": 1})
+	err = c.Send(context.Background(), "anyapp", map[string]any{"x": 1})
 	if !errors.Is(err, errTransportUnavailable) {
 		t.Errorf("err = %v, want errTransportUnavailable", err)
 	}
@@ -53,7 +54,7 @@ func TestSend_RejectsEmptyApp(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer c.Close()
-	if err := c.Send("", map[string]any{"x": 1}); err == nil || !strings.Contains(err.Error(), "app is empty") {
+	if err := c.Send(context.Background(), "", map[string]any{"x": 1}); err == nil || !strings.Contains(err.Error(), "app is empty") {
 		t.Errorf("err = %v, want 'app is empty'", err)
 	}
 }
@@ -66,7 +67,7 @@ func TestSend_MarshalsEvent(t *testing.T) {
 	}
 	defer c.Close()
 
-	if err := c.Send("billing", map[string]any{"event": "charge", "amount": 4200}); err != nil {
+	if err := c.Send(context.Background(), "billing", map[string]any{"event": "charge", "amount": 4200}); err != nil {
 		t.Fatal(err)
 	}
 	fs.waitForN(t, 1)

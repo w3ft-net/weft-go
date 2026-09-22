@@ -124,6 +124,30 @@ func TestRuntimeStats_DefaultIntervalUsedForZero(t *testing.T) {
 	fs.waitForN(t, 1)
 }
 
+func TestRuntimeStats_PropagatesAmbientTraceID(t *testing.T) {
+	// Regression for the gap where emitRuntimeStats called c.Send
+	// without threading the ctx passed to RuntimeStats, silently
+	// dropping any ambient trace ID.
+	fs := newFakeSocket(t)
+	c, err := New(WithSocket(fs.path), WithHeartbeatSocket(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	ctx, cancel := context.WithCancel(ContextWithTraceID(context.Background(), "abc123"))
+	defer cancel()
+	c.RuntimeStats(ctx, "test-svc", 50*time.Millisecond)
+
+	fs.waitForN(t, 1)
+
+	frame := fs.snapshot()[0]
+	wantPrefix := "test-svc/runtime:\x1eabc123\x1e"
+	if !strings.HasPrefix(frame, wantPrefix) {
+		t.Errorf("frame = %q, want %q prefix (trace id envelope)", frame, wantPrefix)
+	}
+}
+
 func TestPickRank(t *testing.T) {
 	cases := []struct {
 		n    int

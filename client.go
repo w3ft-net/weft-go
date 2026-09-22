@@ -65,7 +65,13 @@ func pickRecordsTransport(cfg *config) transport {
 // json-marshalable; in v1 the marshaling and write are
 // synchronous, so Send returns the transport error if any. A
 // later version may add in-process batching.
-func (c *Client) Send(app string, event any) error {
+//
+// If ctx carries an ambient trace ID (see ContextWithTraceID,
+// TraceMiddleware), it's attached to the record so it can be
+// correlated with other log lines from the same request via
+// `trace <id>`. Pass context.Background() when there's no request
+// context to thread through.
+func (c *Client) Send(ctx context.Context, app string, event any) error {
 	if app == "" {
 		return errors.New("weft: app is empty")
 	}
@@ -73,17 +79,18 @@ func (c *Client) Send(app string, event any) error {
 	if err != nil {
 		return fmt.Errorf("weft: marshal: %w", err)
 	}
-	return c.records.sendLine(app, string(data))
+	return c.records.sendLine(ctx, app, string(data))
 }
 
 // SendLine emits an already-serialized line as-is. Use when the
 // caller has constructed JSON itself or wants to ship a
-// non-JSON line that downstream parsers handle.
-func (c *Client) SendLine(app, line string) error {
+// non-JSON line that downstream parsers handle. See Send for ctx's
+// role in trace-ID attachment.
+func (c *Client) SendLine(ctx context.Context, app, line string) error {
 	if app == "" {
 		return errors.New("weft: app is empty")
 	}
-	return c.records.sendLine(app, line)
+	return c.records.sendLine(ctx, app, line)
 }
 
 // DefaultHeartbeatInterval is the recommended heartbeat cadence.
@@ -136,7 +143,7 @@ func (c *Client) HeartbeatWithFields(ctx context.Context, service string, interv
 		ev["type"] = "heartbeat"
 		ev["service"] = service
 		ev["ts"] = time.Now().UTC().Format(time.RFC3339Nano)
-		if err := c.Send(app, ev); err != nil {
+		if err := c.Send(ctx, app, ev); err != nil {
 			fmt.Fprintf(os.Stderr, "weft: heartbeat %q: %v\n", service, err)
 		}
 	}

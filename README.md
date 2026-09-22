@@ -21,8 +21,9 @@ defer cancel()
 c, _ := weft.New()
 defer c.Close()
 
-// 1. Generic event emission.
-c.Send("billing", map[string]any{"event": "charge", "amount": 4200})
+// 1. Generic event emission. ctx's ambient trace ID (see "Trace
+// propagation" below), if any, is attached automatically.
+c.Send(ctx, "billing", map[string]any{"event": "charge", "amount": 4200})
 
 // 2. Service heartbeats — long-running goroutine, cancelled via ctx.
 go c.Heartbeat(ctx, "my-service", weft.DefaultHeartbeatInterval)
@@ -30,6 +31,44 @@ go c.Heartbeat(ctx, "my-service", weft.DefaultHeartbeatInterval)
 // 3. Go runtime telemetry — same shape as Heartbeat.
 go c.RuntimeStats(ctx, "my-service", weft.DefaultRuntimeStatsInterval)
 ```
+
+## Trace propagation
+
+`weft.TraceMiddleware` establishes an ambient trace ID for each request —
+adopted from an inbound W3C `traceparent` header, or freshly generated —
+so every `Send`/`SendLine` call made while handling that request is
+automatically correlated. `weft.NewSlogHandler` stamps the same ID onto
+regular `log/slog` output; `weft.TraceHeaders` propagates it to a
+downstream service.
+
+```go
+import (
+    "log/slog"
+    "net/http"
+    "os"
+
+    "github.com/w3ft-net/weft-go"
+)
+
+slog.SetDefault(slog.New(weft.NewSlogHandler(slog.NewJSONHandler(os.Stdout, nil))))
+
+mux := http.NewServeMux()
+mux.HandleFunc("/orders", func(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    c.Send(ctx, "orders", map[string]any{"event": "created"}) // auto-tagged
+    slog.InfoContext(ctx, "processing order")                 // trace_id attribute
+
+    req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://inventory/check", nil)
+    for k, v := range weft.TraceHeaders(ctx) {
+        req.Header.Set(k, v) // propagate to a downstream service
+    }
+    http.DefaultClient.Do(req)
+})
+http.ListenAndServe(":8080", weft.TraceMiddleware(mux))
+```
+
+Query every log line for one request across every service with weft's
+`trace <id>` shell verb.
 
 ## Two transports
 
@@ -80,10 +119,13 @@ matches weftd's OS-metrics rhythm).
 
 ## Status
 
-v0.1.0. API may change before v1.0. The HTTP fallback transport
-depends on weft's `http-ingest` endpoint, which is "Designed, not
-started" upstream — until that lands, the local-socket transport
-is the only working path.
+v0.3.0. API may change before v1.0. **Breaking change in v0.3.0:**
+`Client.Send`/`Client.SendLine` now take `ctx context.Context` as
+their first parameter (needed to carry the ambient trace ID — see
+"Trace propagation" above). The HTTP fallback transport depends on
+weft's `http-ingest` endpoint, which is "Designed, not started"
+upstream — until that lands, the local-socket transport is the only
+working path.
 
 ## License
 

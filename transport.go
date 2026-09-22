@@ -1,6 +1,7 @@
 package weft
 
 import (
+	"context"
 	"errors"
 	"io"
 )
@@ -12,8 +13,11 @@ import (
 // Client.Heartbeat) — there is no separate heartbeat channel.
 type transport interface {
 	// sendLine writes one app-prefixed log line. The line should
-	// not contain a newline; the transport adds framing.
-	sendLine(app, line string) error
+	// not contain a newline; the transport adds framing. ctx's
+	// ambient trace ID (see TraceIDFromContext), if any, is
+	// attached by the concrete transport in whatever way its wire
+	// format supports.
+	sendLine(ctx context.Context, app, line string) error
 	// close releases resources. Called from Client.Close.
 	close() error
 }
@@ -30,8 +34,8 @@ var errTransportUnavailable = errors.New("weft: transport unavailable")
 // errTransportUnavailable so the caller knows.
 type noopTransport struct{}
 
-func (noopTransport) sendLine(_, _ string) error { return errTransportUnavailable }
-func (noopTransport) close() error               { return nil }
+func (noopTransport) sendLine(_ context.Context, _, _ string) error { return errTransportUnavailable }
+func (noopTransport) close() error                                 { return nil }
 
 // Compile-time check.
 var _ transport = (*noopTransport)(nil)

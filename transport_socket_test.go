@@ -2,6 +2,7 @@ package weft
 
 import (
 	"bufio"
+	"context"
 	"net"
 	"os"
 	"strings"
@@ -103,10 +104,10 @@ func TestSocketTransport_SendsFrames(t *testing.T) {
 	tr := newSocketTransport(fs.path)
 	defer tr.close()
 
-	if err := tr.sendLine("myapp", `{"x":1}`); err != nil {
+	if err := tr.sendLine(context.Background(), "myapp", `{"x":1}`); err != nil {
 		t.Fatal(err)
 	}
-	if err := tr.sendLine("myapp", `{"x":2}`); err != nil {
+	if err := tr.sendLine(context.Background(), "myapp", `{"x":2}`); err != nil {
 		t.Fatal(err)
 	}
 	fs.waitForN(t, 2)
@@ -123,8 +124,54 @@ func TestSocketTransport_RejectsEmbeddedNewline(t *testing.T) {
 	tr := newSocketTransport(fs.path)
 	defer tr.close()
 
-	if err := tr.sendLine("myapp", "line1\nline2"); err == nil {
+	if err := tr.sendLine(context.Background(), "myapp", "line1\nline2"); err == nil {
 		t.Error("expected error for embedded newline")
+	}
+}
+
+func TestSocketTransport_SendsEnvelopeWhenCtxHasTraceID(t *testing.T) {
+	fs := newFakeSocket(t)
+	tr := newSocketTransport(fs.path)
+	defer tr.close()
+
+	ctx := ContextWithTraceID(context.Background(), "abc123")
+	if err := tr.sendLine(ctx, "myapp", `{"x":1}`); err != nil {
+		t.Fatal(err)
+	}
+	fs.waitForN(t, 1)
+
+	want := "myapp:\x1eabc123\x1e" + `{"x":1}`
+	got := fs.snapshot()[0]
+	if got != want {
+		t.Errorf("frame = %q, want %q", got, want)
+	}
+}
+
+func TestSocketTransport_NoEnvelopeWhenCtxHasNoTraceID(t *testing.T) {
+	fs := newFakeSocket(t)
+	tr := newSocketTransport(fs.path)
+	defer tr.close()
+
+	if err := tr.sendLine(context.Background(), "myapp", `{"x":1}`); err != nil {
+		t.Fatal(err)
+	}
+	fs.waitForN(t, 1)
+
+	want := "myapp:" + `{"x":1}`
+	got := fs.snapshot()[0]
+	if got != want {
+		t.Errorf("frame = %q, want %q (no envelope)", got, want)
+	}
+}
+
+func TestSocketTransport_RejectsTraceIDWithControlByte(t *testing.T) {
+	fs := newFakeSocket(t)
+	tr := newSocketTransport(fs.path)
+	defer tr.close()
+
+	ctx := ContextWithTraceID(context.Background(), "bad\x1eid")
+	if err := tr.sendLine(ctx, "myapp", "line"); err == nil {
+		t.Error("expected error for trace id containing a control byte")
 	}
 }
 
@@ -137,14 +184,14 @@ func TestSocketTransport_ReconnectsAfterBrokenConn(t *testing.T) {
 	tr := newSocketTransport(fs.path)
 	defer tr.close()
 
-	if err := tr.sendLine("myapp", "first"); err != nil {
+	if err := tr.sendLine(context.Background(), "myapp", "first"); err != nil {
 		t.Fatal(err)
 	}
 	fs.waitForN(t, 1)
 
 	fs.closeAccepted()
 
-	if err := tr.sendLine("myapp", "second"); err != nil {
+	if err := tr.sendLine(context.Background(), "myapp", "second"); err != nil {
 		t.Fatalf("send after reconnect: %v", err)
 	}
 	fs.waitForN(t, 2)
@@ -158,7 +205,7 @@ func TestSocketTransport_DialFailureReturnsError(t *testing.T) {
 	// Pointing at a non-existent socket should fail predictably.
 	tr := newSocketTransport("/tmp/this-socket-definitely-does-not-exist-weftgo-test")
 	defer tr.close()
-	if err := tr.sendLine("a", "b"); err == nil {
+	if err := tr.sendLine(context.Background(), "a", "b"); err == nil {
 		t.Error("expected error sending to non-existent socket")
 	}
 }

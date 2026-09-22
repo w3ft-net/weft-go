@@ -2,6 +2,7 @@ package weft
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -33,17 +34,27 @@ func newHTTPTransport(endpoint, token string) *httpTransport {
 	}
 }
 
-func (t *httpTransport) sendLine(app, line string) error {
+func (t *httpTransport) sendLine(ctx context.Context, app, line string) error {
 	if t.token == "" {
 		return fmt.Errorf("weft: http transport: no token configured (set WEFT_TOKEN)")
 	}
 	// One-event NDJSON body with the message field set to the line.
 	// The app is part of the path-binding via the token's namespace
 	// scope; including it in the body lets the coordinator route
-	// when a token covers multiple apps in the namespace.
-	body := []byte(fmt.Sprintf(`{"app":%q,"message":%q}`, app, line))
+	// when a token covers multiple apps in the namespace. trace_id
+	// is included as a top-level key when ctx carries an ambient
+	// trace ID — targets weft's JSONAdapter, which as of this
+	// writing is designed but not yet built (docs/plans/http-
+	// ingest.md); forward-compatible plumbing, nothing to verify
+	// backend-side here.
+	var body []byte
+	if traceID, ok := TraceIDFromContext(ctx); ok {
+		body = []byte(fmt.Sprintf(`{"app":%q,"message":%q,"trace_id":%q}`, app, line, traceID))
+	} else {
+		body = []byte(fmt.Sprintf(`{"app":%q,"message":%q}`, app, line))
+	}
 
-	req, err := http.NewRequest(http.MethodPost, t.endpoint+"/api/ingest", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.endpoint+"/api/ingest", bytes.NewReader(body))
 	if err != nil {
 		return err
 	}

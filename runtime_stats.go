@@ -46,19 +46,19 @@ func (c *Client) runRuntimeStats(ctx context.Context, service string, interval t
 
 	// Emit one immediately so dashboards have a value before the
 	// first interval elapses.
-	c.emitRuntimeStats(app, service, startedAt, extra)
+	c.emitRuntimeStats(ctx, app, service, startedAt, extra)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			c.emitRuntimeStats(app, service, startedAt, extra)
+			c.emitRuntimeStats(ctx, app, service, startedAt, extra)
 		}
 	}
 }
 
-func (c *Client) emitRuntimeStats(app, service string, startedAt time.Time, extra map[string]any) {
+func (c *Client) emitRuntimeStats(ctx context.Context, app, service string, startedAt time.Time, extra map[string]any) {
 	now := time.Now()
 
 	var ms runtime.MemStats
@@ -89,7 +89,7 @@ func (c *Client) emitRuntimeStats(app, service string, startedAt time.Time, extr
 	// Best-effort: a transport hiccup shouldn't crash the host
 	// process. Errors are silently dropped here; the records
 	// transport already logs reconnect attempts.
-	_ = c.Send(app, record)
+	_ = c.Send(ctx, app, record)
 }
 
 // pausePercentiles holds p50/p95/p99 of GC pause durations,
