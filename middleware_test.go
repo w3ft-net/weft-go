@@ -28,6 +28,28 @@ func TestTraceMiddleware_AdoptsValidInboundHeader(t *testing.T) {
 	}
 }
 
+func TestTraceMiddleware_AdoptsInboundSpanIDAsAmbientParent(t *testing.T) {
+	const validID = "0123456789abcdef0123456789abcdef"
+	const inboundSpanID = "fedcba9876543210"
+	var gotParentID string
+
+	h := TraceMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotParentID, _ = CurrentSpanID(r.Context())
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("traceparent", "00-"+validID+"-"+inboundSpanID+"-01")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if gotParentID != inboundSpanID {
+		t.Errorf("downstream ambient span = %q, want inbound span-id %q adopted as parent", gotParentID, inboundSpanID)
+	}
+	if got := rec.Header().Get("Traceparent"); got != "00-"+validID+"-"+inboundSpanID+"-01" {
+		t.Errorf("response Traceparent = %q, want the inbound span-id echoed back", got)
+	}
+}
+
 func TestTraceMiddleware_GeneratesWhenMalformed(t *testing.T) {
 	var gotID string
 	var gotOK bool
