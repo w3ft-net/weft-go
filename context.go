@@ -34,7 +34,8 @@ func TraceHeaders(ctx context.Context) map[string]string {
 	if !ok {
 		return map[string]string{}
 	}
-	return map[string]string{"traceparent": FormatTraceParent(traceID)}
+	spanID, _ := CurrentSpanID(ctx)
+	return map[string]string{"traceparent": FormatTraceParent(traceID, spanID)}
 }
 
 // validTraceIDForEnvelope rejects control bytes that would corrupt

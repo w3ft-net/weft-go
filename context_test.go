@@ -44,6 +44,16 @@ func TestTraceHeaders_PopulatedWhenPresent(t *testing.T) {
 	}
 }
 
+func TestTraceHeaders_IncludesAmbientSpanID(t *testing.T) {
+	ctx := ContextWithTraceID(context.Background(), "0123456789abcdef0123456789abcdef")
+	ctx = ContextWithSpanID(ctx, "fedcba9876543210")
+	got := TraceHeaders(ctx)
+	want := "00-0123456789abcdef0123456789abcdef-fedcba9876543210-01"
+	if got["traceparent"] != want {
+		t.Errorf("TraceHeaders[traceparent] = %q, want %q", got["traceparent"], want)
+	}
+}
+
 func TestValidTraceIDForEnvelope(t *testing.T) {
 	cases := []struct {
 		id   string
