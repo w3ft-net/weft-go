@@ -1,0 +1,101 @@
+[
+  {
+    "name": "plain line",
+    "input": {
+      "app": "svc/main",
+      "line": "{\"a\":1}",
+      "trace_id": null
+    },
+    "expect_frame": "svc/main:{\"a\":1}\n"
+  },
+  {
+    "name": "line with trace id",
+    "input": {
+      "app": "svc/main",
+      "line": "{\"a\":1}",
+      "trace_id": "abc123"
+    },
+    "expect_frame": "svc/main:\u001eabc123\u001e{\"a\":1}\n"
+  },
+  {
+    "name": "empty trace id is no trace id",
+    "input": {
+      "app": "svc/main",
+      "line": "{\"a\":1}",
+      "trace_id": ""
+    },
+    "expect_frame": "svc/main:{\"a\":1}\n"
+  },
+  {
+    "name": "empty line",
+    "input": {
+      "app": "svc/main",
+      "line": "",
+      "trace_id": null
+    },
+    "expect_frame": "svc/main:\n"
+  },
+  {
+    "name": "unicode line",
+    "input": {
+      "app": "svc/main",
+      "line": "h\u00e9llo \u2713",
+      "trace_id": "abc"
+    },
+    "expect_frame": "svc/main:\u001eabc\u001eh\u00e9llo \u2713\n"
+  },
+  {
+    "name": "record separator in line is kept",
+    "input": {
+      "app": "svc/main",
+      "line": "a\u001eb",
+      "trace_id": "abc"
+    },
+    "expect_frame": "svc/main:\u001eabc\u001ea\u001eb\n"
+  },
+  {
+    "name": "unit separator in trace id is kept",
+    "input": {
+      "app": "svc/main",
+      "line": "{\"a\":1}",
+      "trace_id": "a\u001fb"
+    },
+    "expect_frame": "svc/main:\u001ea\u001fb\u001e{\"a\":1}\n"
+  },
+  {
+    "name": "newline in line is rejected",
+    "input": {
+      "app": "svc/main",
+      "line": "a\nb",
+      "trace_id": null
+    },
+    "expect_error": true
+  },
+  {
+    "name": "newline in line with trace id is rejected",
+    "input": {
+      "app": "svc/main",
+      "line": "a\nb",
+      "trace_id": "abc"
+    },
+    "expect_error": true
+  },
+  {
+    "name": "record separator in trace id is rejected",
+    "input": {
+      "app": "svc/main",
+      "line": "{\"a\":1}",
+      "trace_id": "a\u001eb"
+    },
+    "expect_error": true
+  },
+  {
+    "name": "newline in trace id is rejected",
+    "input": {
+      "app": "svc/main",
+      "line": "{\"a\":1}",
+      "trace_id": "a\nb"
+    },
+    "expect_error": true
+  }
+]

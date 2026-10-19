@@ -1,0 +1,23 @@
+{
+  "valid": [
+    "a",
+    "svc-a",
+    "svc.b",
+    "svc_c",
+    "1234",
+    "A.B-c_9",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  ],
+  "invalid": [
+    "",
+    "with space",
+    "with/slash",
+    "semi;colon",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "tab\tname",
+    "new\nline",
+    "caf\u00e9",
+    "colon:name",
+    "star*"
+  ]
+}

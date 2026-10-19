@@ -1,0 +1,264 @@
+{
+  "outgoing": [
+    {
+      "name": "no trace leaves metadata alone",
+      "ctx": {},
+      "metadata": [
+        [
+          "x-custom",
+          "7"
+        ]
+      ],
+      "expect": [
+        [
+          "x-custom",
+          "7"
+        ]
+      ]
+    },
+    {
+      "name": "no trace leaves stale ids alone",
+      "ctx": {},
+      "metadata": [
+        [
+          "weft-trace-id",
+          "old"
+        ],
+        [
+          "weft-span-id",
+          "old-span"
+        ]
+      ],
+      "expect": [
+        [
+          "weft-trace-id",
+          "old"
+        ],
+        [
+          "weft-span-id",
+          "old-span"
+        ]
+      ]
+    },
+    {
+      "name": "trace only",
+      "ctx": {
+        "trace_id": "t1"
+      },
+      "metadata": [],
+      "expect": [
+        [
+          "weft-trace-id",
+          "t1"
+        ]
+      ]
+    },
+    {
+      "name": "trace and span",
+      "ctx": {
+        "trace_id": "t1",
+        "span_id": "s1"
+      },
+      "metadata": [],
+      "expect": [
+        [
+          "weft-trace-id",
+          "t1"
+        ],
+        [
+          "weft-span-id",
+          "s1"
+        ]
+      ]
+    },
+    {
+      "name": "other metadata is kept",
+      "ctx": {
+        "trace_id": "t1",
+        "span_id": "s1"
+      },
+      "metadata": [
+        [
+          "x-custom",
+          "7"
+        ]
+      ],
+      "expect": [
+        [
+          "x-custom",
+          "7"
+        ],
+        [
+          "weft-trace-id",
+          "t1"
+        ],
+        [
+          "weft-span-id",
+          "s1"
+        ]
+      ]
+    },
+    {
+      "name": "stale ids are replaced",
+      "ctx": {
+        "trace_id": "new",
+        "span_id": "s2"
+      },
+      "metadata": [
+        [
+          "weft-trace-id",
+          "old"
+        ],
+        [
+          "weft-span-id",
+          "old-span"
+        ]
+      ],
+      "expect": [
+        [
+          "weft-trace-id",
+          "new"
+        ],
+        [
+          "weft-span-id",
+          "s2"
+        ]
+      ]
+    },
+    {
+      "name": "stale span id is dropped when ctx has no span",
+      "ctx": {
+        "trace_id": "new"
+      },
+      "metadata": [
+        [
+          "weft-trace-id",
+          "old"
+        ],
+        [
+          "weft-span-id",
+          "old-span"
+        ]
+      ],
+      "expect": [
+        [
+          "weft-trace-id",
+          "new"
+        ]
+      ]
+    }
+  ],
+  "incoming": [
+    {
+      "name": "trace and span",
+      "metadata": [
+        [
+          "weft-trace-id",
+          "t1"
+        ],
+        [
+          "weft-span-id",
+          "s1"
+        ]
+      ],
+      "expect": {
+        "trace_id": "t1",
+        "span_id": "s1"
+      }
+    },
+    {
+      "name": "trace only",
+      "metadata": [
+        [
+          "weft-trace-id",
+          "t1"
+        ]
+      ],
+      "expect": {
+        "trace_id": "t1",
+        "span_id": null
+      }
+    },
+    {
+      "name": "no ids",
+      "metadata": [
+        [
+          "x-custom",
+          "7"
+        ]
+      ],
+      "expect": null
+    },
+    {
+      "name": "no metadata",
+      "metadata": [],
+      "expect": null
+    },
+    {
+      "name": "span without trace is ignored",
+      "metadata": [
+        [
+          "weft-span-id",
+          "orphan"
+        ]
+      ],
+      "expect": null
+    },
+    {
+      "name": "empty trace id is no trace",
+      "metadata": [
+        [
+          "weft-trace-id",
+          ""
+        ],
+        [
+          "weft-span-id",
+          "s1"
+        ]
+      ],
+      "expect": null
+    },
+    {
+      "name": "empty span id is no span",
+      "metadata": [
+        [
+          "weft-trace-id",
+          "t1"
+        ],
+        [
+          "weft-span-id",
+          ""
+        ]
+      ],
+      "expect": {
+        "trace_id": "t1",
+        "span_id": null
+      }
+    },
+    {
+      "name": "first value wins",
+      "metadata": [
+        [
+          "weft-trace-id",
+          "a"
+        ],
+        [
+          "weft-trace-id",
+          "b"
+        ],
+        [
+          "weft-span-id",
+          "x"
+        ],
+        [
+          "weft-span-id",
+          "y"
+        ]
+      ],
+      "expect": {
+        "trace_id": "a",
+        "span_id": "x"
+      }
+    }
+  ]
+}

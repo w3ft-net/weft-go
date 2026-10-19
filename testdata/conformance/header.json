@@ -1,0 +1,144 @@
+[
+  {
+    "name": "all fields",
+    "input": {
+      "level": "WARN",
+      "trace_id": "abc123",
+      "span_name": "db.query",
+      "span_id": "s1",
+      "parent_id": "s0",
+      "dur_ns": 2500,
+      "fmt": "json",
+      "kind": "stderr",
+      "ts_ns": 1700000000123456789,
+      "body": "{\"msg\":\"x\"}"
+    },
+    "expect": "\u001ev1\u001f1700000000123456789\u001fWARN\u001fabc123\u001fdb.query\u001fs1\u001fs0\u001f2500\u001fjson\u001fstderr\u001e{\"msg\":\"x\"}"
+  },
+  {
+    "name": "only timestamp and format",
+    "input": {
+      "fmt": "text",
+      "ts_ns": 1700000000123456789,
+      "body": "body"
+    },
+    "expect": "\u001ev1\u001f1700000000123456789\u001f\u001f\u001f\u001f\u001f\u001f\u001ftext\u001f\u001ebody"
+  },
+  {
+    "name": "empty body",
+    "input": {
+      "fmt": "json",
+      "ts_ns": 1700000000123456789,
+      "body": ""
+    },
+    "expect": "\u001ev1\u001f1700000000123456789\u001f\u001f\u001f\u001f\u001f\u001f\u001fjson\u001f\u001e"
+  },
+  {
+    "name": "unicode body and values",
+    "input": {
+      "span_name": "\u00fcn\u00ef",
+      "fmt": "text",
+      "ts_ns": 1700000000123456789,
+      "body": "h\u00e9llo \u2713"
+    },
+    "expect": "\u001ev1\u001f1700000000123456789\u001f\u001f\u001f\u00fcn\u00ef\u001f\u001f\u001f\u001ftext\u001f\u001eh\u00e9llo \u2713"
+  },
+  {
+    "name": "epoch timestamp",
+    "input": {
+      "ts_ns": 0,
+      "fmt": "text",
+      "body": "body"
+    },
+    "expect": "\u001ev1\u001f0\u001f\u001f\u001f\u001f\u001f\u001f\u001ftext\u001f\u001ebody"
+  },
+  {
+    "name": "zero duration is empty",
+    "input": {
+      "dur_ns": 0,
+      "fmt": "text",
+      "ts_ns": 1700000000123456789,
+      "body": "body"
+    },
+    "expect": "\u001ev1\u001f1700000000123456789\u001f\u001f\u001f\u001f\u001f\u001f\u001ftext\u001f\u001ebody"
+  },
+  {
+    "name": "negative duration is empty",
+    "input": {
+      "dur_ns": -5,
+      "fmt": "text",
+      "ts_ns": 1700000000123456789,
+      "body": "body"
+    },
+    "expect": "\u001ev1\u001f1700000000123456789\u001f\u001f\u001f\u001f\u001f\u001f\u001ftext\u001f\u001ebody"
+  },
+  {
+    "name": "unit separator in level is dropped",
+    "input": {
+      "level": "WA\u001fRN",
+      "fmt": "json",
+      "ts_ns": 1700000000123456789,
+      "body": "body"
+    },
+    "expect": "\u001ev1\u001f1700000000123456789\u001f\u001f\u001f\u001f\u001f\u001f\u001fjson\u001f\u001ebody"
+  },
+  {
+    "name": "record separator in trace id is dropped",
+    "input": {
+      "trace_id": "ab\u001ecd",
+      "fmt": "json",
+      "ts_ns": 1700000000123456789,
+      "body": "body"
+    },
+    "expect": "\u001ev1\u001f1700000000123456789\u001f\u001f\u001f\u001f\u001f\u001f\u001fjson\u001f\u001ebody"
+  },
+  {
+    "name": "newline in span name is dropped",
+    "input": {
+      "span_name": "a\nb",
+      "fmt": "json",
+      "ts_ns": 1700000000123456789,
+      "body": "body"
+    },
+    "expect": "\u001ev1\u001f1700000000123456789\u001f\u001f\u001f\u001f\u001f\u001f\u001fjson\u001f\u001ebody"
+  },
+  {
+    "name": "control byte in format is dropped",
+    "input": {
+      "fmt": "js\u001fon",
+      "ts_ns": 1700000000123456789,
+      "body": "body"
+    },
+    "expect": "\u001ev1\u001f1700000000123456789\u001f\u001f\u001f\u001f\u001f\u001f\u001f\u001f\u001ebody"
+  },
+  {
+    "name": "record separator in kind is dropped",
+    "input": {
+      "kind": "std\u001eerr",
+      "fmt": "json",
+      "ts_ns": 1700000000123456789,
+      "body": "body"
+    },
+    "expect": "\u001ev1\u001f1700000000123456789\u001f\u001f\u001f\u001f\u001f\u001f\u001fjson\u001f\u001ebody"
+  },
+  {
+    "name": "record separator in span and parent ids is dropped",
+    "input": {
+      "span_id": "a\u001eb",
+      "parent_id": "c\u001fd",
+      "fmt": "json",
+      "ts_ns": 1700000000123456789,
+      "body": "body"
+    },
+    "expect": "\u001ev1\u001f1700000000123456789\u001f\u001f\u001f\u001f\u001f\u001f\u001fjson\u001f\u001ebody"
+  },
+  {
+    "name": "record separator in body is kept",
+    "input": {
+      "fmt": "text",
+      "ts_ns": 1700000000123456789,
+      "body": "a\u001eb"
+    },
+    "expect": "\u001ev1\u001f1700000000123456789\u001f\u001f\u001f\u001f\u001f\u001f\u001ftext\u001f\u001ea\u001eb"
+  }
+]

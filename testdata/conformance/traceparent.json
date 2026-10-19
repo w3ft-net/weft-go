@@ -1,0 +1,137 @@
+{
+  "parse": [
+    {
+      "name": "trace and span",
+      "header": "00-4bf92f3577b34da6a3ce929d0e4e1736-00f067aa0ba902b7-01",
+      "expect": {
+        "trace_id": "4bf92f3577b34da6a3ce929d0e4e1736",
+        "span_id": "00f067aa0ba902b7"
+      }
+    },
+    {
+      "name": "all-zero span is no span",
+      "header": "00-4bf92f3577b34da6a3ce929d0e4e1736-0000000000000000-01",
+      "expect": {
+        "trace_id": "4bf92f3577b34da6a3ce929d0e4e1736",
+        "span_id": ""
+      }
+    },
+    {
+      "name": "other version and flags",
+      "header": "01-4bf92f3577b34da6a3ce929d0e4e1736-00f067aa0ba902b7-00",
+      "expect": {
+        "trace_id": "4bf92f3577b34da6a3ce929d0e4e1736",
+        "span_id": "00f067aa0ba902b7"
+      }
+    },
+    {
+      "name": "all-zero trace id",
+      "header": "00-00000000000000000000000000000000-00f067aa0ba902b7-01",
+      "expect": null
+    },
+    {
+      "name": "empty",
+      "header": "",
+      "expect": null
+    },
+    {
+      "name": "no dashes",
+      "header": "abc",
+      "expect": null
+    },
+    {
+      "name": "three parts",
+      "header": "00-4bf92f3577b34da6a3ce929d0e4e1736-00f067aa0ba902b7",
+      "expect": null
+    },
+    {
+      "name": "five parts",
+      "header": "00-4bf92f3577b34da6a3ce929d0e4e1736-00f067aa0ba902b7-01-xx",
+      "expect": null
+    },
+    {
+      "name": "short trace id",
+      "header": "00-4bf92f3577b34da6a3ce929d0e4e173-00f067aa0ba902b7-01",
+      "expect": null
+    },
+    {
+      "name": "long trace id",
+      "header": "00-4bf92f3577b34da6a3ce929d0e4e17360-00f067aa0ba902b7-01",
+      "expect": null
+    },
+    {
+      "name": "short span id",
+      "header": "00-4bf92f3577b34da6a3ce929d0e4e1736-00f067aa0ba902b-01",
+      "expect": null
+    },
+    {
+      "name": "long span id",
+      "header": "00-4bf92f3577b34da6a3ce929d0e4e1736-00f067aa0ba902b70-01",
+      "expect": null
+    },
+    {
+      "name": "one-char version",
+      "header": "0-4bf92f3577b34da6a3ce929d0e4e1736-00f067aa0ba902b7-01",
+      "expect": null
+    },
+    {
+      "name": "one-char flags",
+      "header": "00-4bf92f3577b34da6a3ce929d0e4e1736-00f067aa0ba902b7-1",
+      "expect": null
+    },
+    {
+      "name": "uppercase trace id",
+      "header": "00-4BF92F3577B34DA6A3CE929D0E4E1736-00f067aa0ba902b7-01",
+      "expect": null
+    },
+    {
+      "name": "uppercase span id",
+      "header": "00-4bf92f3577b34da6a3ce929d0e4e1736-00F067AA0BA902B7-01",
+      "expect": null
+    },
+    {
+      "name": "uppercase version",
+      "header": "0A-4bf92f3577b34da6a3ce929d0e4e1736-00f067aa0ba902b7-01",
+      "expect": null
+    },
+    {
+      "name": "uppercase flags",
+      "header": "00-4bf92f3577b34da6a3ce929d0e4e1736-00f067aa0ba902b7-0F",
+      "expect": null
+    },
+    {
+      "name": "non-hex trace id",
+      "header": "00-gbf92f3577b34da6a3ce929d0e4e1736-00f067aa0ba902b7-01",
+      "expect": null
+    },
+    {
+      "name": "non-hex span id",
+      "header": "00-4bf92f3577b34da6a3ce929d0e4e1736-z0f067aa0ba902b7-01",
+      "expect": null
+    },
+    {
+      "name": "surrounding whitespace",
+      "header": " 00-4bf92f3577b34da6a3ce929d0e4e1736-00f067aa0ba902b7-01",
+      "expect": null
+    },
+    {
+      "name": "multibyte digit",
+      "header": "00-\u00e9bf92f3577b34da6a3ce929d0e4e1736-00f067aa0ba902b7-01",
+      "expect": null
+    }
+  ],
+  "format": [
+    {
+      "name": "trace and span",
+      "trace_id": "4bf92f3577b34da6a3ce929d0e4e1736",
+      "span_id": "00f067aa0ba902b7",
+      "expect": "00-4bf92f3577b34da6a3ce929d0e4e1736-00f067aa0ba902b7-01"
+    },
+    {
+      "name": "no span renders the placeholder",
+      "trace_id": "4bf92f3577b34da6a3ce929d0e4e1736",
+      "span_id": "",
+      "expect": "00-4bf92f3577b34da6a3ce929d0e4e1736-0000000000000000-01"
+    }
+  ]
+}

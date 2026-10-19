@@ -1,0 +1,128 @@
+{
+  "ts_pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$",
+  "cases": [
+    {
+      "name": "heartbeat without extras",
+      "stream": "heartbeat",
+      "service": "svc",
+      "extra": {},
+      "expect": {
+        "type": "heartbeat",
+        "service": "svc"
+      },
+      "present": [
+        "ts"
+      ]
+    },
+    {
+      "name": "heartbeat keeps extras",
+      "stream": "heartbeat",
+      "service": "svc",
+      "extra": {
+        "instance_id": "i-1",
+        "labels": {
+          "a": "b"
+        }
+      },
+      "expect": {
+        "type": "heartbeat",
+        "service": "svc",
+        "instance_id": "i-1",
+        "labels": {
+          "a": "b"
+        }
+      },
+      "present": [
+        "ts"
+      ]
+    },
+    {
+      "name": "heartbeat reserved keys win",
+      "stream": "heartbeat",
+      "service": "svc",
+      "extra": {
+        "type": "x",
+        "service": "y",
+        "ts": "z",
+        "instance_id": "i-1"
+      },
+      "expect": {
+        "type": "heartbeat",
+        "service": "svc",
+        "instance_id": "i-1"
+      },
+      "present": [
+        "ts"
+      ],
+      "absent_values": {
+        "ts": "z"
+      }
+    },
+    {
+      "name": "runtime without extras",
+      "stream": "runtime",
+      "service": "svc",
+      "extra": {},
+      "expect": {
+        "service": "svc"
+      },
+      "present": [
+        "ts",
+        "type",
+        "uptime_s"
+      ],
+      "type_pattern": "^[a-z]+_runtime$"
+    },
+    {
+      "name": "runtime keeps extras",
+      "stream": "runtime",
+      "service": "svc",
+      "extra": {
+        "instance_id": "i-1",
+        "labels": {
+          "a": "b"
+        }
+      },
+      "expect": {
+        "service": "svc",
+        "instance_id": "i-1",
+        "labels": {
+          "a": "b"
+        }
+      },
+      "present": [
+        "ts",
+        "type",
+        "uptime_s"
+      ],
+      "type_pattern": "^[a-z]+_runtime$"
+    },
+    {
+      "name": "runtime reserved keys win",
+      "stream": "runtime",
+      "service": "svc",
+      "extra": {
+        "type": "x",
+        "service": "y",
+        "ts": "z",
+        "uptime_s": "q",
+        "instance_id": "i-1"
+      },
+      "expect": {
+        "service": "svc",
+        "instance_id": "i-1"
+      },
+      "present": [
+        "ts",
+        "type",
+        "uptime_s"
+      ],
+      "type_pattern": "^[a-z]+_runtime$",
+      "absent_values": {
+        "type": "x",
+        "ts": "z",
+        "uptime_s": "q"
+      }
+    }
+  ]
+}
